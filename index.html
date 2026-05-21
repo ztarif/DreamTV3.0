@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Comptes rendus</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      background: #f5f6f8;
+    }
+
+    .container {
+      padding: 10px;
+    }
+
+    .title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .search {
+      width: 100%;
+      padding: 6px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .card {
+      background: white;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .date {
+      font-size: 12px;
+      color: gray;
+    }
+
+    .detail {
+      padding: 10px;
+    }
+
+    button {
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: #0078d4;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #005ea2;
+    }
+
+    .back {
+      margin-bottom: 10px;
+      cursor: pointer;
+      color: #0078d4;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <div id="listView">
+    <div class="title">📄 Comptes rendus</div>
+    <input class="search" placeholder="Rechercher..." oninput="filterList(event)"/>
+
+    <div id="list"></div>
+  </div>
+
+  <div id="detailView" style="display:none;">
+    <div class="back" onclick="back()">← Retour</div>
+    <div class="detail">
+      <h3>🧾 Compte rendu</h3>
+      <p id="summary"></p>
+
+      <h4>Actions</h4>
+      <ul id="actions"></ul>
+
+      <button onclick="copy()">📋 Copier</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const mockData = [
+  {
+    id: "1",
+    date: "21/05/2026",
+    title: "Client Dupont",
+    summary: "Le client appelle pour un problème de facturation.",
+    actions: ["Envoyer facture", "Rappeler client"]
+  },
+  {
+    id: "2",
+    date: "20/05/2026",
+    title: "SAV technique",
+    summary: "Le client signale une coupure de service.",
+    actions: ["Créer ticket", "Planifier intervention"]
+  }
+];
+
+let filtered = mockData;
+let current = null;
+
+function renderList() {
+  const container = document.getElementById("list");
+  container.innerHTML = "";
+
+  filtered.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <div><strong>${item.title}</strong></div>
+      <div class="date">${item.date}</div>
+      <div>${item.summary.substring(0, 50)}...</div>
+    `;
+    div.onclick = () => openDetail(item);
+    container.appendChild(div);
+  });
+}
+
+function filterList(e) {
+  const value = e.target.value.toLowerCase();
+  filtered = mockData.filter(d =>
+    d.title.toLowerCase().includes(value) ||
+    d.summary.toLowerCase().includes(value)
+  );
+  renderList();
+}
+
+function openDetail(item) {
+  current = item;
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("detailView").style.display = "block";
+
+  document.getElementById("summary").innerText = item.summary;
+
+  const actions = document.getElementById("actions");
+  actions.innerHTML = "";
+  item.actions.forEach(a => {
+    const li = document.createElement("li");
+    li.innerText = a;
+    actions.appendChild(li);
+  });
+}
+
+function back() {
+  document.getElementById("listView").style.display = "block";
+  document.getElementById("detailView").style.display = "none";
+}
+
+function copy() {
+  const text = `
+Résumé:
+${current.summary}
+
+Actions:
+${current.actions.join("\n")}
+  `;
+  navigator.clipboard.writeText(text);
+  alert("Copié !");
+}
+
+// init
+renderList();
+</script>
+
+</body>
+</html>
+``
