@@ -119,34 +119,31 @@ let genesysToken = null;
    AUTH GENESYS
 ============================ */
 
-async function initAuth() {
-  try {
-    const client = platformClient.ApiClient.instance;
+function initAuth() {
+  window.addEventListener("message", (event) => {
+    try {
+      const data = event.data;
 
-    // ✅ IMPORTANT : ton environnement
-    client.setEnvironment("mypurecloud.ie");
+      if (!data) return;
 
-    // ✅ lancer OAuth implicite (dans iframe autorisé par Genesys)
-    await client.loginPKCEGrant(
-      "827eccc6-0ab8-4fa8-a7ad-cb37e20e9bca",
-      window.location.href
-    );
+      console.log("📩 Message reçu Genesys :", data);
 
-    const token = client.getAccessToken();
+      // 👉 chercher userId dans le message
+      if (data.eventBody && data.eventBody.userId) {
+        const userId = data.eventBody.userId;
 
-    console.log("✅ Token Genesys :", token);
+        console.log("✅ Agent détecté :", userId);
 
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("app").style.display = "block";
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("app").style.display = "block";
 
-    initApp();
+        initApp(userId);
+      }
 
-  } catch (e) {
-    console.error("❌ Erreur auth", e);
-
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("error").style.display = "block";
-  }
+    } catch (e) {
+      console.error("❌ Erreur message", e);
+    }
+  });
 }
 
 /* ============================
