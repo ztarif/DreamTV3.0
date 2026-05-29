@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Comptes rendus</title>
+
+  <!-- SDK Genesys -->
+  <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -12,6 +16,7 @@
 
     .container {
       padding: 10px;
+      display: none; /* caché tant que pas authentifié */
     }
 
     .title {
@@ -63,16 +68,29 @@
       cursor: pointer;
       color: #0078d4;
     }
+
+    #loading, #error {
+      text-align: center;
+      margin-top: 50px;
+      font-size: 16px;
+    }
+
+    #error {
+      color: red;
+    }
   </style>
 </head>
 
 <body>
-<div class="container">
+
+<div id="loading">🔐 Vérification en cours...</div>
+<div id="error" style="display:none;">❌ Impossible de récupérer le token Genesys</div>
+
+<div class="container" id="app">
 
   <div id="listView">
     <div class="title">📄 Comptes rendus</div>
     <input class="search" placeholder="Rechercher..." oninput="filterList(event)"/>
-
     <div id="list"></div>
   </div>
 
@@ -92,6 +110,39 @@
 </div>
 
 <script>
+let genesysToken = null;
+
+/* ============================
+   AUTH GENESYS
+============================ */
+
+async function initAuth() {
+  try {
+    const client = platformClient.ApiClient.instance;
+
+    // récupère le token Genesys
+    genesysToken = await client.getAccessToken();
+
+    console.log("✅ Token Genesys récupéré");
+
+    // accès autorisé → afficher app
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("app").style.display = "block";
+
+    initApp();
+
+  } catch (e) {
+    console.error("❌ Erreur token Genesys", e);
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error").style.display = "block";
+  }
+}
+
+/* ============================
+   MOCK DATA
+============================ */
+
 const mockData = [
   {
     id: "1",
@@ -109,8 +160,26 @@ const mockData = [
   }
 ];
 
-let filtered = mockData;
+let filtered = [];
 let current = null;
+
+/* ============================
+   APP LOGIC
+============================ */
+
+function initApp() {
+  filtered = mockData;
+  renderList();
+
+  // exemple d'appel backend
+  /*
+  fetch("https://ton-api/reports", {
+    headers: {
+      Authorization: `Bearer ${genesysToken}`
+    }
+  });
+  */
+}
 
 function renderList() {
   const container = document.getElementById("list");
@@ -147,6 +216,7 @@ function openDetail(item) {
 
   const actions = document.getElementById("actions");
   actions.innerHTML = "";
+
   item.actions.forEach(a => {
     const li = document.createElement("li");
     li.innerText = a;
@@ -171,10 +241,13 @@ ${current.actions.join("\n")}
   alert("Copié !");
 }
 
-// init
-renderList();
+/* ============================
+   INIT
+============================ */
+
+initAuth();
+
 </script>
 
 </body>
 </html>
-``
