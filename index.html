@@ -16,7 +16,7 @@
 
     .container {
       padding: 10px;
-      display: none; /* caché tant que pas authentifié */
+      display: none;
     }
 
     .title {
@@ -83,8 +83,11 @@
 
 <body>
 
-<div id="loading">🔐 Vérification en cours...</div>
-<div id="error" style="display:none;">❌ Impossible de récupérer le token Genesys</div>
+<div id="loading">🔐 Vérification Genesys en cours...</div>
+<div id="error" style="display:none;">
+  ❌ Impossible de récupérer le token Genesys<br/>
+  👉 Vérifie que la page est bien ouverte dans Genesys
+</div>
 
 <div class="container" id="app">
 
@@ -116,23 +119,29 @@ let genesysToken = null;
    AUTH GENESYS
 ============================ */
 
-async function initAuth() {
+function initAuth() {
   try {
     const client = platformClient.ApiClient.instance;
 
-    // récupère le token Genesys
-    genesysToken = await client.getAccessToken();
+    // ⚠️ IMPORTANT → adapter selon ta région
+    client.setEnvironment("mypurecloud.de");
 
-    console.log("✅ Token Genesys récupéré");
+    // ✅ récupérer token existant (session Genesys)
+    genesysToken = client.authData && client.authData.accessToken;
 
-    // accès autorisé → afficher app
+    if (!genesysToken) {
+      throw new Error("Token Genesys introuvable");
+    }
+
+    console.log("✅ Token Genesys récupéré :", genesysToken);
+
     document.getElementById("loading").style.display = "none";
     document.getElementById("app").style.display = "block";
 
     initApp();
 
   } catch (e) {
-    console.error("❌ Erreur token Genesys", e);
+    console.error("❌ Erreur auth Genesys", e);
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("error").style.display = "block";
@@ -171,12 +180,17 @@ function initApp() {
   filtered = mockData;
   renderList();
 
-  // exemple d'appel backend
+  // ✅ EXEMPLE CALL BACKEND
   /*
   fetch("https://ton-api/reports", {
     headers: {
       Authorization: `Bearer ${genesysToken}`
     }
+  })
+  .then(r => r.json())
+  .then(data => {
+    filtered = data;
+    renderList();
   });
   */
 }
