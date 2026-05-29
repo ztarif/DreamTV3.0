@@ -2,13 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Comptes rendus</title>
-
-  <!-- SDK Genesys -->
-  <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"
-          onload="console.log('[MOCK-IA] ✅ SDK script chargé')"
-          onerror="console.error('[MOCK-IA] ❌ Erreur chargement SDK')">
-  </script>
+  <title>Mock CR IA</title>
 
   <style>
     body {
@@ -20,6 +14,7 @@
     #loading, #info {
       text-align: center;
       margin-top: 40px;
+      font-size: 14px;
     }
 
     #info {
@@ -27,8 +22,8 @@
     }
 
     .container {
-      padding: 10px;
       display: none;
+      padding: 10px;
     }
 
     .card {
@@ -37,14 +32,13 @@
       margin-bottom: 8px;
       border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 
 <body>
 
-<div id="loading">⏳ Initialisation widget...</div>
+<div id="loading">⏳ Initialisation...</div>
 <div id="info" style="display:none;"></div>
 
 <div class="container" id="app">
@@ -53,92 +47,98 @@
 </div>
 
 <script>
+
 console.log("[MOCK-IA] 📄 Script chargé");
 
 let userContext = {
   userId: null,
-  token: null,
-  source: null
+  source: "INIT"
 };
 
 /* ============================
-   INIT PRINCIPAL
+   LIFECYCLE GENESYS
 ============================ */
 
-function init() {
-  console.log("[MOCK-IA] 🚀 Initialisation widget");
+window.addEventListener("message", (event) => {
+  console.log("[MOCK-IA] 📩 Message reçu:", event.data);
 
-  // ✅ Diagnostic SDK
-  checkSDK();
+  if (!event.data || typeof event.data !== "object") return;
 
-  // ✅ Toujours fallback (car token inaccessible)
-  fallbackUser("Mode normal Genesys (pas de token accessible)");
+  const type = event.data.type || "";
+  const body = event.data.eventBody || {};
 
-  displayApp();
-}
+  switch (type) {
+    case "purecloud.client.lifecycle.bootstrap":
+      console.log("[MOCK-IA] ✅ BOOTSTRAP reçu");
+      handleBootstrap(body);
+      break;
+
+    case "purecloud.client.lifecycle.focus":
+      console.log("[MOCK-IA] 👀 FOCUS widget");
+      break;
+
+    case "purecloud.client.lifecycle.blur":
+      console.log("[MOCK-IA] 😴 BLUR widget");
+      break;
+
+    case "purecloud.client.lifecycle.stop":
+      console.log("[MOCK-IA] 🛑 STOP widget");
+      break;
+
+    default:
+      console.log("[MOCK-IA] ℹ️ Autre event:", type);
+  }
+});
 
 /* ============================
-   CHECK SDK (une seule fois)
+   HANDLERS
 ============================ */
 
-function checkSDK() {
-  console.log("[MOCK-IA] 🔍 Vérification présence SDK...");
+function handleBootstrap(body) {
+  console.log("[MOCK-IA] 🔍 Bootstrap data:", body);
 
-  if (typeof platformClient !== "undefined") {
-    console.log("[MOCK-IA] ✅ platformClient détecté");
-
-    try {
-      const client = platformClient.ApiClient.instance;
-
-      console.log("[MOCK-IA] ✅ Client instance OK", client);
-
-      const token = client.authData && client.authData.accessToken;
-
-      if (token) {
-        console.log("[MOCK-IA] ✅ Token disponible (cas rare)");
-      } else {
-        console.warn("[MOCK-IA] ⚠️ SDK OK mais pas de token");
-      }
-
-    } catch (e) {
-      console.error("[MOCK-IA] ❌ Erreur utilisation SDK:", e);
-    }
-
+  // ⚠️ Selon Genesys → body est souvent vide
+  if (body && body.userId) {
+    userContext.userId = body.userId;
+    userContext.source = "GENESYS";
   } else {
-    console.warn("[MOCK-IA] ❌ SDK NON disponible (probable blocage CSP Genesys)");
+    console.warn("[MOCK-IA] ⚠️ Aucun userId dans bootstrap → fallback");
+    fallbackUser();
   }
+
+  startApp();
 }
 
 /* ============================
    FALLBACK
 ============================ */
 
-function fallbackUser(reason) {
-  console.warn("[MOCK-IA] 🧪 MODE FALLBACK :", reason);
+function fallbackUser() {
+  console.warn("[MOCK-IA] 🧪 MODE FALLBACK");
 
   userContext.userId = "mock-agent";
   userContext.source = "FALLBACK";
 }
 
 /* ============================
-   UI
+   APP INIT
 ============================ */
 
-function displayApp() {
-  console.log("[MOCK-IA] ✅ Affichage app avec :", userContext);
+function startApp() {
+  console.log("[MOCK-IA] 🚀 Démarrage app avec:", userContext);
 
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "block";
 
   document.getElementById("info").style.display = "block";
   document.getElementById("info").innerText =
-    `⚠️ ${userContext.source} (pas de token Genesys)`;
+    `Source: ${userContext.source} | User: ${userContext.userId}`;
 
   initApp();
 }
 
 /* ============================
-   LOGIQUE APP
+   APP UI
 ============================ */
 
 function initApp() {
@@ -160,22 +160,25 @@ function initApp() {
 }
 
 /* ============================
+   FALLBACK TIMEOUT
+============================ */
+
+setTimeout(() => {
+  if (!userContext.userId) {
+    console.warn("[MOCK-IA] ⏳ Aucun bootstrap reçu → fallback auto");
+    fallbackUser();
+    startApp();
+  }
+}, 1500);
+
+
+/* ============================
    DEBUG GLOBAL
 ============================ */
 
 window.addEventListener("error", (e) => {
   console.error("[MOCK-IA] 💥 JS ERROR:", e.message);
 });
-
-window.addEventListener("message", (event) => {
-  console.log("[MOCK-IA] 📩 Message reçu :", event.data);
-});
-
-/* ============================
-   START
-============================ */
-
-init();
 
 </script>
 
