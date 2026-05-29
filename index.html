@@ -5,7 +5,10 @@
   <title>Comptes rendus</title>
 
   <!-- SDK Genesys -->
-  <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+  <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"
+          onload="console.log('[MOCK-IA] ✅ SDK script chargé')"
+          onerror="console.error('[MOCK-IA] ❌ Erreur chargement SDK')">
+  </script>
 
   <style>
     body {
@@ -14,18 +17,18 @@
       background: #f5f6f8;
     }
 
-    .container {
-      padding: 10px;
-      display: none;
-    }
-
     #loading, #info {
       text-align: center;
-      margin-top: 50px;
+      margin-top: 40px;
     }
 
     #info {
       color: orange;
+    }
+
+    .container {
+      padding: 10px;
+      display: none;
     }
 
     .card {
@@ -34,13 +37,14 @@
       margin-bottom: 8px;
       border-radius: 8px;
       cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 
 <body>
 
-<div id="loading">⏳ Chargement du SDK Genesys...</div>
+<div id="loading">⏳ Initialisation widget...</div>
 <div id="info" style="display:none;"></div>
 
 <div class="container" id="app">
@@ -49,6 +53,8 @@
 </div>
 
 <script>
+console.log("[MOCK-IA] 📄 Script chargé");
+
 let userContext = {
   userId: null,
   token: null,
@@ -56,74 +62,59 @@ let userContext = {
 };
 
 /* ============================
-   DEBUG GLOBAL
+   INIT PRINCIPAL
 ============================ */
 
-console.log("📄 Script chargé");
+function init() {
+  console.log("[MOCK-IA] 🚀 Initialisation widget");
 
-window.addEventListener("error", (e) => {
-  console.error("💥 JS ERROR:", e.message);
-});
+  // ✅ Diagnostic SDK
+  checkSDK();
 
-/* ============================
-   WAIT SDK
-============================ */
+  // ✅ Toujours fallback (car token inaccessible)
+  fallbackUser("Mode normal Genesys (pas de token accessible)");
 
-function waitForSDK(retries = 10) {
-  console.log("🔍 Vérification SDK...");
-
-  if (typeof platformClient !== "undefined") {
-    console.log("✅ SDK disponible");
-    initAuth();
-  } else if (retries > 0) {
-    console.warn("⏳ SDK non prêt, retry...");
-    setTimeout(() => waitForSDK(retries - 1), 300);
-  } else {
-    console.error("❌ SDK jamais chargé !");
-    fallbackUser();
-    displayApp();
-  }
+  displayApp();
 }
 
 /* ============================
-   AUTH
+   CHECK SDK (une seule fois)
 ============================ */
 
-function initAuth() {
-  console.log("🚀 initAuth");
+function checkSDK() {
+  console.log("[MOCK-IA] 🔍 Vérification présence SDK...");
 
-  try {
-    const client = platformClient.ApiClient.instance;
-    console.log("✅ Client SDK:", client);
+  if (typeof platformClient !== "undefined") {
+    console.log("[MOCK-IA] ✅ platformClient détecté");
 
-    client.setEnvironment("mypurecloud.de");
+    try {
+      const client = platformClient.ApiClient.instance;
 
-    const token = client.authData && client.authData.accessToken;
+      console.log("[MOCK-IA] ✅ Client instance OK", client);
 
-    if (token) {
-      console.log("✅ Token trouvé !");
-      userContext.token = token;
-      userContext.userId = "genesys-user";
-      userContext.source = "TOKEN";
-    } else {
-      console.warn("⚠️ Token non disponible");
-      fallbackUser();
+      const token = client.authData && client.authData.accessToken;
+
+      if (token) {
+        console.log("[MOCK-IA] ✅ Token disponible (cas rare)");
+      } else {
+        console.warn("[MOCK-IA] ⚠️ SDK OK mais pas de token");
+      }
+
+    } catch (e) {
+      console.error("[MOCK-IA] ❌ Erreur utilisation SDK:", e);
     }
 
-  } catch (e) {
-    console.error("❌ Erreur initAuth:", e.message);
-    fallbackUser();
+  } else {
+    console.warn("[MOCK-IA] ❌ SDK NON disponible (probable blocage CSP Genesys)");
   }
-
-  displayApp();
 }
 
 /* ============================
    FALLBACK
 ============================ */
 
-function fallbackUser() {
-  console.warn("🧪 MODE FALLBACK");
+function fallbackUser(reason) {
+  console.warn("[MOCK-IA] 🧪 MODE FALLBACK :", reason);
 
   userContext.userId = "mock-agent";
   userContext.source = "FALLBACK";
@@ -134,35 +125,33 @@ function fallbackUser() {
 ============================ */
 
 function displayApp() {
-  console.log("✅ Affichage app avec:", userContext);
+  console.log("[MOCK-IA] ✅ Affichage app avec :", userContext);
 
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "block";
 
-  if (userContext.source === "FALLBACK") {
-    document.getElementById("info").style.display = "block";
-    document.getElementById("info").innerText =
-      "⚠️ Mode fallback (pas de token Genesys)";
-  }
+  document.getElementById("info").style.display = "block";
+  document.getElementById("info").innerText =
+    `⚠️ ${userContext.source} (pas de token Genesys)`;
 
   initApp();
 }
 
 /* ============================
-   APP LOGIC
+   LOGIQUE APP
 ============================ */
 
 function initApp() {
-  console.log("📦 initApp");
+  console.log("[MOCK-IA] 📦 initApp");
 
-  const mockData = [
+  const data = [
     { title: "Client Dupont", date: "21/05" },
     { title: "SAV technique", date: "20/05" }
   ];
 
   const container = document.getElementById("list");
 
-  mockData.forEach(item => {
+  data.forEach(item => {
     const div = document.createElement("div");
     div.className = "card";
     div.innerHTML = `<b>${item.title}</b><br>${item.date}`;
@@ -171,13 +160,24 @@ function initApp() {
 }
 
 /* ============================
-   INIT
+   DEBUG GLOBAL
 ============================ */
 
-waitForSDK();
+window.addEventListener("error", (e) => {
+  console.error("[MOCK-IA] 💥 JS ERROR:", e.message);
+});
+
+window.addEventListener("message", (event) => {
+  console.log("[MOCK-IA] 📩 Message reçu :", event.data);
+});
+
+/* ============================
+   START
+============================ */
+
+init();
 
 </script>
 
 </body>
 </html>
-``
