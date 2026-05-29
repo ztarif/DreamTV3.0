@@ -19,17 +19,13 @@
       display: none;
     }
 
-    .title {
-      font-weight: bold;
-      margin-bottom: 10px;
+    #loading, #info {
+      text-align: center;
+      margin-top: 50px;
     }
 
-    .search {
-      width: 100%;
-      padding: 6px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+    #info {
+      color: orange;
     }
 
     .card {
@@ -38,256 +34,26 @@
       margin-bottom: 8px;
       border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .date {
-      font-size: 12px;
-      color: gray;
-    }
-
-    .detail {
-      padding: 10px;
-    }
-
-    button {
-      padding: 8px;
-      border: none;
-      border-radius: 6px;
-      background: #0078d4;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #005ea2;
-    }
-
-    .back {
-      margin-bottom: 10px;
-      cursor: pointer;
-      color: #0078d4;
-    }
-
-    #loading, #info {
-      text-align: center;
-      margin-top: 50px;
-      font-size: 14px;
-    }
-
-    #info {
-      color: orange;
     }
   </style>
 </head>
 
 <body>
 
-<div id="loading">🔐 Initialisation widget...</div>
+<div id="loading">⏳ Chargement du SDK Genesys...</div>
 <div id="info" style="display:none;"></div>
 
 <div class="container" id="app">
-
-  <div id="listView">
-    <div class="title">📄 Comptes rendus</div>
-    <input class="search" placeholder="Rechercher..." oninput="filterList(event)"/>
-    <div id="list"></div>
-  </div>
-
-  <div id="detailView" style="display:none;">
-    <div class="back" onclick="back()">← Retour</div>
-    <div class="detail">
-      <h3>🧾 Compte rendu</h3>
-      <p id="summary"></p>
-
-      <h4>Actions</h4>
-      <ul id="actions"></ul>
-
-      <button onclick="copy()">📋 Copier</button>
-    </div>
-  </div>
-
+  <h3>📄 Comptes rendus</h3>
+  <div id="list"></div>
 </div>
 
 <script>
 let userContext = {
   userId: null,
-  source: null,
-  token: null
+  token: null,
+  source: null
 };
-
-/* ============================
-   AUTH / INIT
-============================ */
-
-function initAuth() {
-  console.log("🚀 initAuth démarré");
-
-  try {
-    const client = platformClient.ApiClient.instance;
-    console.log("✅ SDK chargé:", client);
-
-    // ⚠️ config environnement (important mais pas suffisant)
-    client.setEnvironment("mypurecloud.de");
-
-    // tentative récupération token (peut échouer)
-    const token = client.authData && client.authData.accessToken;
-
-    if (token) {
-      console.log("✅ Token Genesys trouvé");
-      userContext.token = token;
-      userContext.userId = "genesys-token-user";
-      userContext.source = "TOKEN";
-    } else {
-      console.warn("⚠️ Aucun token disponible (comportement normal en widget)");
-      fallbackUser();
-    }
-
-  } catch (e) {
-    console.error("❌ Erreur initAuth:", e);
-    fallbackUser();
-  }
-
-  displayApp();
-}
-
-/* ============================
-   FALLBACK
-============================ */
-
-function fallbackUser() {
-  console.warn("👉 Activation fallback utilisateur");
-
-  userContext.userId = "mock-agent-123";
-  userContext.source = "FALLBACK";
-}
-
-/* ============================
-   UI INIT
-============================ */
-
-function displayApp() {
-  console.log("✅ Initialisation interface avec user:", userContext);
-
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("app").style.display = "block";
-
-  if (userContext.source === "FALLBACK") {
-    document.getElementById("info").style.display = "block";
-    document.getElementById("info").innerText =
-      "⚠️ Mode fallback actif (pas de token Genesys)";
-  }
-
-  initApp();
-}
-
-/* ============================
-   MOCK DATA
-============================ */
-
-const mockData = [
-  {
-    id: "1",
-    date: "21/05/2026",
-    title: "Client Dupont",
-    summary: "Le client appelle pour un problème de facturation.",
-    actions: ["Envoyer facture", "Rappeler client"]
-  },
-  {
-    id: "2",
-    date: "20/05/2026",
-    title: "SAV technique",
-    summary: "Le client signale une coupure de service.",
-    actions: ["Créer ticket", "Planifier intervention"]
-  }
-];
-
-let filtered = [];
-let current = null;
-
-/* ============================
-   APP LOGIC
-============================ */
-
-function initApp() {
-  console.log("📦 initApp avec user:", userContext.userId);
-
-  filtered = mockData;
-  renderList();
-
-  // ✅ exemple backend
-  /*
-  fetch("https://ton-api/reports", {
-    headers: {
-      Authorization: `Bearer ${userContext.token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      userId: userContext.userId
-    })
-  });
-  */
-}
-
-function renderList() {
-  const container = document.getElementById("list");
-  container.innerHTML = "";
-
-  filtered.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerHTML = `
-      <div><strong>${item.title}</strong></div>
-      <div class="date">${item.date}</div>
-      <div>${item.summary.substring(0, 50)}...</div>
-    `;
-    div.onclick = () => openDetail(item);
-    container.appendChild(div);
-  });
-}
-
-function filterList(e) {
-  const value = e.target.value.toLowerCase();
-  filtered = mockData.filter(d =>
-    d.title.toLowerCase().includes(value) ||
-    d.summary.toLowerCase().includes(value)
-  );
-  renderList();
-}
-
-function openDetail(item) {
-  current = item;
-  document.getElementById("listView").style.display = "none";
-  document.getElementById("detailView").style.display = "block";
-
-  document.getElementById("summary").innerText = item.summary;
-
-  const actions = document.getElementById("actions");
-  actions.innerHTML = "";
-
-  item.actions.forEach(a => {
-    const li = document.createElement("li");
-    li.innerText = a;
-    actions.appendChild(li);
-  });
-}
-
-function back() {
-  document.getElementById("listView").style.display = "block";
-  document.getElementById("detailView").style.display = "none";
-}
-
-function copy() {
-  const text = `
-Résumé:
-${current.summary}
-
-Actions:
-${current.actions.join("\n")}
-  `;
-  navigator.clipboard.writeText(text);
-  alert("Copié !");
-}
 
 /* ============================
    DEBUG GLOBAL
@@ -299,17 +65,119 @@ window.addEventListener("error", (e) => {
   console.error("💥 JS ERROR:", e.message);
 });
 
-window.addEventListener("message", (event) => {
-  console.log("📩 Message reçu (Genesys?):", event.data);
-});
+/* ============================
+   WAIT SDK
+============================ */
+
+function waitForSDK(retries = 10) {
+  console.log("🔍 Vérification SDK...");
+
+  if (typeof platformClient !== "undefined") {
+    console.log("✅ SDK disponible");
+    initAuth();
+  } else if (retries > 0) {
+    console.warn("⏳ SDK non prêt, retry...");
+    setTimeout(() => waitForSDK(retries - 1), 300);
+  } else {
+    console.error("❌ SDK jamais chargé !");
+    fallbackUser();
+    displayApp();
+  }
+}
+
+/* ============================
+   AUTH
+============================ */
+
+function initAuth() {
+  console.log("🚀 initAuth");
+
+  try {
+    const client = platformClient.ApiClient.instance;
+    console.log("✅ Client SDK:", client);
+
+    client.setEnvironment("mypurecloud.de");
+
+    const token = client.authData && client.authData.accessToken;
+
+    if (token) {
+      console.log("✅ Token trouvé !");
+      userContext.token = token;
+      userContext.userId = "genesys-user";
+      userContext.source = "TOKEN";
+    } else {
+      console.warn("⚠️ Token non disponible");
+      fallbackUser();
+    }
+
+  } catch (e) {
+    console.error("❌ Erreur initAuth:", e.message);
+    fallbackUser();
+  }
+
+  displayApp();
+}
+
+/* ============================
+   FALLBACK
+============================ */
+
+function fallbackUser() {
+  console.warn("🧪 MODE FALLBACK");
+
+  userContext.userId = "mock-agent";
+  userContext.source = "FALLBACK";
+}
+
+/* ============================
+   UI
+============================ */
+
+function displayApp() {
+  console.log("✅ Affichage app avec:", userContext);
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  if (userContext.source === "FALLBACK") {
+    document.getElementById("info").style.display = "block";
+    document.getElementById("info").innerText =
+      "⚠️ Mode fallback (pas de token Genesys)";
+  }
+
+  initApp();
+}
+
+/* ============================
+   APP LOGIC
+============================ */
+
+function initApp() {
+  console.log("📦 initApp");
+
+  const mockData = [
+    { title: "Client Dupont", date: "21/05" },
+    { title: "SAV technique", date: "20/05" }
+  ];
+
+  const container = document.getElementById("list");
+
+  mockData.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `<b>${item.title}</b><br>${item.date}`;
+    container.appendChild(div);
+  });
+}
 
 /* ============================
    INIT
 ============================ */
 
-initAuth();
+waitForSDK();
 
 </script>
 
 </body>
 </html>
+``
