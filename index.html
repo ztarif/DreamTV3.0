@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>Mock CR IA</title>
 
+  <!-- ✅ SDK CORRECT -->
+  <script src="https://sdk-cdn.mypurecloud.com/client-apps/2.6.7/purecloud-client-app-sdk.min.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -14,7 +17,6 @@
     #loading, #info {
       text-align: center;
       margin-top: 40px;
-      font-size: 14px;
     }
 
     #info {
@@ -38,7 +40,7 @@
 
 <body>
 
-<div id="loading">⏳ Initialisation...</div>
+<div id="loading">⏳ Initialisation Genesys...</div>
 <div id="info" style="display:none;"></div>
 
 <div class="container" id="app">
@@ -50,63 +52,87 @@
 
 console.log("[MOCK-IA] 📄 Script chargé");
 
+let app = null;
 let userContext = {
   userId: null,
-  source: "INIT"
+  name: null,
+  source: null
 };
 
 /* ============================
-   LIFECYCLE GENESYS
+   INIT CLIENT APP SDK
 ============================ */
 
-window.addEventListener("message", (event) => {
-  console.log("[MOCK-IA] 📩 Message reçu:", event.data);
+function initClientApp() {
+  try {
+    console.log("[MOCK-IA] 🚀 Init ClientApp SDK");
 
-  if (!event.data || typeof event.data !== "object") return;
+    const ClientApp = window.purecloud.apps.ClientApp;
 
-  const type = event.data.type || "";
-  const body = event.data.eventBody || {};
+    app = new ClientApp({
+      gcHostOriginQueryParam: "gcHostOrigin",
+      gcTargetEnvQueryParam: "gcTargetEnv"
+    });
 
-  switch (type) {
-    case "purecloud.client.lifecycle.bootstrap":
-      console.log("[MOCK-IA] ✅ BOOTSTRAP reçu");
-      handleBootstrap(body);
-      break;
+    console.log("[MOCK-IA] ✅ ClientApp initialisé");
 
-    case "purecloud.client.lifecycle.focus":
-      console.log("[MOCK-IA] 👀 FOCUS widget");
-      break;
+    setupLifecycle();
+    getUserDetails();
 
-    case "purecloud.client.lifecycle.blur":
-      console.log("[MOCK-IA] 😴 BLUR widget");
-      break;
-
-    case "purecloud.client.lifecycle.stop":
-      console.log("[MOCK-IA] 🛑 STOP widget");
-      break;
-
-    default:
-      console.log("[MOCK-IA] ℹ️ Autre event:", type);
+  } catch (e) {
+    console.error("[MOCK-IA] ❌ Impossible d'init ClientApp", e);
+    fallbackUser();
+    startApp();
   }
-});
+}
 
 /* ============================
-   HANDLERS
+   LIFECYCLE HOOKS
 ============================ */
 
-function handleBootstrap(body) {
-  console.log("[MOCK-IA] 🔍 Bootstrap data:", body);
+function setupLifecycle() {
+  console.log("[MOCK-IA] 🔄 Setup lifecycle");
 
-  // ⚠️ Selon Genesys → body est souvent vide
-  if (body && body.userId) {
-    userContext.userId = body.userId;
-    userContext.source = "GENESYS";
-  } else {
-    console.warn("[MOCK-IA] ⚠️ Aucun userId dans bootstrap → fallback");
-    fallbackUser();
-  }
+  app.lifecycle.addBootstrapListener(() => {
+    console.log("[MOCK-IA] ✅ BOOTSTRAP reçu");
+  });
 
-  startApp();
+  app.lifecycle.addFocusListener(() => {
+    console.log("[MOCK-IA] 👀 FOCUS widget");
+  });
+
+  app.lifecycle.addBlurListener(() => {
+    console.log("[MOCK-IA] 😴 BLUR widget");
+  });
+
+  app.lifecycle.addStopListener(() => {
+    console.log("[MOCK-IA] 🛑 STOP widget");
+  });
+}
+
+/* ============================
+   USER CONTEXT
+============================ */
+
+function getUserDetails() {
+  console.log("[MOCK-IA] 🔍 Récupération user Genesys...");
+
+  app.user.getUserDetails()
+    .then(user => {
+      console.log("[MOCK-IA] ✅ User récupéré:", user);
+
+      userContext.userId = user.id;
+      userContext.name = user.name;
+      userContext.source = "GENESYS";
+
+      startApp();
+    })
+    .catch(err => {
+      console.warn("[MOCK-IA] ⚠️ Impossible de récupérer user:", err);
+
+      fallbackUser();
+      startApp();
+    });
 }
 
 /* ============================
@@ -117,39 +143,42 @@ function fallbackUser() {
   console.warn("[MOCK-IA] 🧪 MODE FALLBACK");
 
   userContext.userId = "mock-agent";
+  userContext.name = "Utilisateur local";
   userContext.source = "FALLBACK";
 }
 
 /* ============================
-   APP INIT
+   START APP
 ============================ */
 
 function startApp() {
-  console.log("[MOCK-IA] 🚀 Démarrage app avec:", userContext);
+  console.log("[MOCK-IA] 🚀 startApp avec :", userContext);
 
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "block";
 
   document.getElementById("info").style.display = "block";
   document.getElementById("info").innerText =
-    `Source: ${userContext.source} | User: ${userContext.userId}`;
+    `Source: ${userContext.source} | User: ${userContext.name}`;
 
   initApp();
 }
 
 /* ============================
-   APP UI
+   UI / DATA
 ============================ */
 
 function initApp() {
   console.log("[MOCK-IA] 📦 initApp");
 
+  // 👉 Mock data (remplacé ensuite par backend)
   const data = [
     { title: "Client Dupont", date: "21/05" },
     { title: "SAV technique", date: "20/05" }
   ];
 
   const container = document.getElementById("list");
+  container.innerHTML = "";
 
   data.forEach(item => {
     const div = document.createElement("div");
@@ -157,20 +186,20 @@ function initApp() {
     div.innerHTML = `<b>${item.title}</b><br>${item.date}`;
     container.appendChild(div);
   });
+
+  // ✅ Exemple backend futur
+  /*
+  fetch("https://api.mondomaine.com/reports", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      userId: userContext.userId
+    })
+  });
+  */
 }
-
-/* ============================
-   FALLBACK TIMEOUT
-============================ */
-
-setTimeout(() => {
-  if (!userContext.userId) {
-    console.warn("[MOCK-IA] ⏳ Aucun bootstrap reçu → fallback auto");
-    fallbackUser();
-    startApp();
-  }
-}, 1500);
-
 
 /* ============================
    DEBUG GLOBAL
@@ -178,6 +207,14 @@ setTimeout(() => {
 
 window.addEventListener("error", (e) => {
   console.error("[MOCK-IA] 💥 JS ERROR:", e.message);
+});
+
+/* ============================
+   INIT
+============================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  initClientApp();
 });
 
 </script>
