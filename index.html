@@ -119,21 +119,22 @@ let genesysToken = null;
    AUTH GENESYS
 ============================ */
 
-function initAuth() {
+async function initAuth() {
   try {
     const client = platformClient.ApiClient.instance;
 
-    // ⚠️ IMPORTANT → adapter selon ta région
-    client.setEnvironment("mypurecloud.de");
+    // ✅ IMPORTANT : ton environnement
+    client.setEnvironment("mypurecloud.ie");
 
-    // ✅ récupérer token existant (session Genesys)
-    genesysToken = client.authData && client.authData.accessToken;
+    // ✅ lancer OAuth implicite (dans iframe autorisé par Genesys)
+    await client.loginPKCEGrant(
+      "827eccc6-0ab8-4fa8-a7ad-cb37e20e9bca",
+      window.location.href
+    );
 
-    if (!genesysToken) {
-      throw new Error("Token Genesys introuvable");
-    }
+    const token = client.getAccessToken();
 
-    console.log("✅ Token Genesys récupéré :", genesysToken);
+    console.log("✅ Token Genesys :", token);
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("app").style.display = "block";
@@ -141,7 +142,7 @@ function initAuth() {
     initApp();
 
   } catch (e) {
-    console.error("❌ Erreur auth Genesys", e);
+    console.error("❌ Erreur auth", e);
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("error").style.display = "block";
