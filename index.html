@@ -69,25 +69,22 @@
       color: #0078d4;
     }
 
-    #loading, #error {
+    #loading, #info {
       text-align: center;
       margin-top: 50px;
-      font-size: 16px;
+      font-size: 14px;
     }
 
-    #error {
-      color: red;
+    #info {
+      color: orange;
     }
   </style>
 </head>
 
 <body>
 
-<div id="loading">🔐 Vérification Genesys en cours...</div>
-<div id="error" style="display:none;">
-  ❌ Impossible de récupérer le token Genesys<br/>
-  👉 Vérifie que la page est bien ouverte dans Genesys
-</div>
+<div id="loading">🔐 Initialisation widget...</div>
+<div id="info" style="display:none;"></div>
 
 <div class="container" id="app">
 
@@ -113,37 +110,75 @@
 </div>
 
 <script>
-let genesysToken = null;
+let userContext = {
+  userId: null,
+  source: null,
+  token: null
+};
 
 /* ============================
-   AUTH GENESYS
+   AUTH / INIT
 ============================ */
 
 function initAuth() {
-  window.addEventListener("message", (event) => {
-    try {
-      const data = event.data;
+  console.log("🚀 initAuth démarré");
 
-      if (!data) return;
+  try {
+    const client = platformClient.ApiClient.instance;
+    console.log("✅ SDK chargé:", client);
 
-      console.log("📩 Message reçu Genesys :", data);
+    // ⚠️ config environnement (important mais pas suffisant)
+    client.setEnvironment("mypurecloud.de");
 
-      // 👉 chercher userId dans le message
-      if (data.eventBody && data.eventBody.userId) {
-        const userId = data.eventBody.userId;
+    // tentative récupération token (peut échouer)
+    const token = client.authData && client.authData.accessToken;
 
-        console.log("✅ Agent détecté :", userId);
-
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("app").style.display = "block";
-
-        initApp(userId);
-      }
-
-    } catch (e) {
-      console.error("❌ Erreur message", e);
+    if (token) {
+      console.log("✅ Token Genesys trouvé");
+      userContext.token = token;
+      userContext.userId = "genesys-token-user";
+      userContext.source = "TOKEN";
+    } else {
+      console.warn("⚠️ Aucun token disponible (comportement normal en widget)");
+      fallbackUser();
     }
-  });
+
+  } catch (e) {
+    console.error("❌ Erreur initAuth:", e);
+    fallbackUser();
+  }
+
+  displayApp();
+}
+
+/* ============================
+   FALLBACK
+============================ */
+
+function fallbackUser() {
+  console.warn("👉 Activation fallback utilisateur");
+
+  userContext.userId = "mock-agent-123";
+  userContext.source = "FALLBACK";
+}
+
+/* ============================
+   UI INIT
+============================ */
+
+function displayApp() {
+  console.log("✅ Initialisation interface avec user:", userContext);
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  if (userContext.source === "FALLBACK") {
+    document.getElementById("info").style.display = "block";
+    document.getElementById("info").innerText =
+      "⚠️ Mode fallback actif (pas de token Genesys)";
+  }
+
+  initApp();
 }
 
 /* ============================
@@ -175,20 +210,21 @@ let current = null;
 ============================ */
 
 function initApp() {
+  console.log("📦 initApp avec user:", userContext.userId);
+
   filtered = mockData;
   renderList();
 
-  // ✅ EXEMPLE CALL BACKEND
+  // ✅ exemple backend
   /*
   fetch("https://ton-api/reports", {
     headers: {
-      Authorization: `Bearer ${genesysToken}`
-    }
-  })
-  .then(r => r.json())
-  .then(data => {
-    filtered = data;
-    renderList();
+      Authorization: `Bearer ${userContext.token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      userId: userContext.userId
+    })
   });
   */
 }
@@ -252,6 +288,20 @@ ${current.actions.join("\n")}
   navigator.clipboard.writeText(text);
   alert("Copié !");
 }
+
+/* ============================
+   DEBUG GLOBAL
+============================ */
+
+console.log("📄 Script chargé");
+
+window.addEventListener("error", (e) => {
+  console.error("💥 JS ERROR:", e.message);
+});
+
+window.addEventListener("message", (event) => {
+  console.log("📩 Message reçu (Genesys?):", event.data);
+});
 
 /* ============================
    INIT
